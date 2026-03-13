@@ -1,42 +1,67 @@
-import React from 'react'
-import { assets } from '../assets/assets'
+import { Link } from "react-router-dom"
 
 const Footer = () => {
   return (
-    <div className='md:mx-10'>
-      <div className='flex flex-col sm:grid grid-cols-[3fr_1fr_1fr] gap-14 my-10  mt-40 text-sm'>
+    <footer className="bg-gray-50 border-t mt-20">
 
-        <div>
-          <img className='mb-5 w-40' src={assets.logo} alt="" />
-          <p className='w-full md:w-2/3 text-gray-600 leading-6'>Prescripto is an advanced Doctor Appointment Booking Platform designed to simplify healthcare access. Built using the MERN Stack (MongoDB, Express.js, React.js, Node.js), it enables patients to book appointments, consult doctors, and manage health records easily. With secure online payments, 3-level authentication (Admin, Doctor, Patient), and a responsive interface, Prescripto ensures a seamless and reliable healthcare experience for everyone.</p>
+      <div className="max-w-6xl mx-auto px-6 py-10">
+
+        {/* Logo / Name */}
+        <div className="text-center mb-6">
+          <h2 className="text-2xl font-semibold text-blue-600">
+            Prescripto
+          </h2>
+
+          <p className="text-gray-500 mt-2 text-sm">
+            Secure doctor appointment booking platform
+          </p>
         </div>
 
-        <div>
-          <p className='text-xl font-medium mb-5'>COMPANY</p>
-          <ul className='flex flex-col gap-2 text-gray-600'>
-            <li>Home</li>
-            <li>About us</li>
-            <li>Delivery</li>
-            <li>Privacy policy</li>
-          </ul>
+        {/* Links */}
+        <div className="flex justify-center gap-6 flex-wrap text-gray-600 text-sm">
+
+          <Link to="/about" className="hover:text-blue-600">
+            About
+          </Link>
+
+          <Link to="/privacy-policy" className="hover:text-blue-600">
+            Privacy Policy
+          </Link>
+
+          <Link to="/terms" className="hover:text-blue-600">
+            Terms
+          </Link>
+
+          <Link to="/refund-policy" className="hover:text-blue-600">
+            Refund Policy
+          </Link>
+
+          <Link to="/cancellation-policy" className="hover:text-blue-600">
+            Cancellation Policy
+          </Link>
+
+          <Link to="/contact" className="hover:text-blue-600">
+            Contact
+          </Link>
+
         </div>
 
-        <div>
-          <p className='text-xl font-medium mb-5'>GET IN TOUCH</p>
-          <ul className='flex flex-col gap-2 text-gray-600'>
-            <li>+91-9963706510</li>
-            <li>katrapallynaveenkumar1@gmail.com</li>
-          </ul>
+        {/* Divider */}
+        <div className="border-t mt-8 pt-6 text-center">
+
+          <p className="text-gray-500 text-sm">
+            © 2026 Prescripto. All rights reserved.
+          </p>
+
+          <p className="text-gray-400 text-xs mt-2">
+            Secure payments powered by trusted payment gateway partners.
+          </p>
+
         </div>
 
       </div>
 
-      <div>
-        <hr />
-        <p className='py-5 text-sm text-center'>Copyright 2025 @ Prescripto.com - All Right Reserved.</p>
-      </div>
-
-    </div>
+    </footer>
   )
 }
 
