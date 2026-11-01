@@ -7,6 +7,19 @@ import appointmentModel from "../models/appointmentModel.js";
 import { v2 as cloudinary } from 'cloudinary'
 import stripe from "stripe";
 import razorpay from 'razorpay';
+import crypto from "crypto";
+
+import nodemailer from "nodemailer";
+
+// Email transporter
+const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    }
+});
+
 
 // Gateway Initialize
 const stripeInstance = new stripe(process.env.STRIPE_SECRET_KEY)
@@ -14,6 +27,25 @@ const razorpayInstance = new razorpay({
     key_id: process.env.RAZORPAY_KEY_ID,
     key_secret: process.env.RAZORPAY_KEY_SECRET,
 })
+
+const generateResetToken = () => {
+
+    const resetToken = crypto.randomBytes(32).toString("hex");
+
+    const hashedToken = crypto
+        .createHash("sha256")
+        .update(resetToken)
+        .digest("hex");
+
+    const resetPasswordExpires = Date.now() + 15 * 60 * 1000;
+
+    return {
+        resetToken,
+        hashedToken,
+        resetPasswordExpires
+    };
+};
+
 
 // API to register user
 const registerUser = async (req, res) => {
@@ -83,6 +115,100 @@ const loginUser = async (req, res) => {
         res.json({ success: false, message: error.message })
     }
 }
+
+// API to forgot password
+
+const forgotPassword = async (req, res) => {
+    try {
+
+        const { email } = req.body;
+
+        if (!email) {
+            return res.json({
+                success: false,
+                message: "Please enter your email"
+            });
+        }
+
+        if (!validator.isEmail(email)) {
+            return res.json({
+                success: false,
+                message: "Invalid email"
+            });
+        }
+
+        const user = await userModel.findOne({
+            email: email.trim()
+        });
+
+        if (!user) {
+            return res.json({
+                success: true,
+                message: "If an account exists, reset instructions will be sent."
+            });
+        }
+
+        // Generate token
+        const tokenData = generateResetToken();
+
+        // Save token in MongoDB
+        user.resetPasswordToken = tokenData.hashedToken;
+        user.resetPasswordExpires = tokenData.resetPasswordExpires;
+
+        await user.save();
+        console.log("RESET TOKEN SAVED:", user.resetPasswordToken);
+        console.log("RESET EXPIRY SAVED:", user.resetPasswordExpires);
+        const savedUser = await userModel.findById(user._id);
+
+console.log("DATABASE TOKEN EXISTS:", !!savedUser.resetPasswordToken);
+console.log("DATABASE EXPIRY EXISTS:", !!savedUser.resetPasswordExpires);
+
+        // Create reset link
+        const resetLink =
+            `${process.env.FRONTEND_URL}/reset-password/${tokenData.resetToken}`;
+
+        // Email content
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: user.email,
+            subject: "Prescripto - Reset Password",
+
+            html: `
+                <h2>Reset Your Password</h2>
+
+                <p>Hello ${user.name},</p>
+
+                <p>Click below to reset your password:</p>
+
+                <a href="${resetLink}">
+                    Reset Password
+                </a>
+
+                <p>This link expires in 15 minutes.</p>
+
+                <p>If you did not request this, ignore this email.</p>
+            `
+        };
+
+        // Send email
+        await transporter.sendMail(mailOptions);
+
+        return res.json({
+            success: true,
+            message: "Password reset email sent successfully"
+        });
+
+    } catch (error) {
+
+        console.log(error);
+
+        return res.json({
+            success: false,
+            message: "Email could not be sent. Please try again."
+        });
+    }
+};
+
 
 // API to get user profile data
 const getProfile = async (req, res) => {
@@ -343,9 +469,77 @@ const verifyStripe = async (req, res) => {
 
 }
 
+
+// API to reset password
+const resetPassword = async (req, res) => {
+    try {
+        const { token, password } = req.body;
+
+        // Check required fields
+        if (!token || !password) {
+            return res.json({
+                success: false,
+                message: "Token and new password are required"
+            });
+        }
+
+        // Validate password length
+        if (password.length < 8) {
+            return res.json({
+                success: false,
+                message: "Password must contain at least 8 characters"
+            });
+        }
+
+        // Hash the token received from frontend
+        const hashedToken = crypto
+            .createHash("sha256")
+            .update(token)
+            .digest("hex");
+
+        // Find user with valid, non-expired token
+        const user = await userModel.findOne({
+            resetPasswordToken: hashedToken,
+            resetPasswordExpires: { $gt: Date.now() }
+        });
+
+        if (!user) {
+            return res.json({
+                success: false,
+                message: "Invalid or expired reset link"
+            });
+        }
+
+        // Hash the new password
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        // Update password and clear reset token
+        user.password = hashedPassword;
+        user.resetPasswordToken = null;
+        user.resetPasswordExpires = null;
+
+        await user.save();
+
+        return res.json({
+            success: true,
+            message: "Password reset successfully"
+        });
+
+    } catch (error) {
+        console.log(error);
+        return res.json({
+            success: false,
+            message: "Something went wrong"
+        });
+    }
+};
+
 export {
     loginUser,
     registerUser,
+    forgotPassword,
+    resetPassword,
     getProfile,
     updateProfile,
     bookAppointment,
@@ -354,5 +548,6 @@ export {
     paymentRazorpay,
     verifyRazorpay,
     paymentStripe,
-    verifyStripe
+    verifyStripe,
+
 }
